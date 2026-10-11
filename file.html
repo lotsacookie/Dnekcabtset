@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub Uploader</title>
+<style>
+:root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2330;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #2f81f7;
+    --accent-hover: #4493ff;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    padding: 32px 16px 64px;
+}
+main { max-width: 760px; margin: 0 auto; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 24px; }
+.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.card h2 { font-size: 15px; margin: 0 0 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.row > .field { flex: 1 1 200px; }
+input[type=text], input[type=password], select {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 11px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+}
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.25); }
+select:disabled, input:disabled { opacity: 0.5; cursor: not-allowed; }
+button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--accent-hover); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.secondary { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); }
+button.secondary:hover:not(:disabled) { background: #232c3b; }
+button.icon { padding: 6px 10px; background: transparent; color: var(--muted); border: 1px solid var(--border); }
+button.icon:hover:not(:disabled) { color: var(--err); border-color: var(--err); background: transparent; }
+.inline { display: flex; gap: 10px; align-items: flex-end; }
+.inline .field { flex: 1; margin-bottom: 0; }
+.check { display: flex; gap: 8px; align-items: center; margin-top: 12px; color: var(--muted); font-size: 13px; }
+.check input { width: auto; }
+.status { font-size: 13px; margin-top: 10px; min-height: 18px; }
+.status.ok { color: var(--ok); }
+.status.err { color: var(--err); }
+.status.warn { color: var(--warn); }
+.hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.dropzone.over { border-color: var(--accent); background: rgba(47, 129, 247, 0.08); color: var(--text); }
+.dropzone strong { color: var(--text); }
+.files { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.file {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 10px;
+    align-items: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+.file .meta { grid-column: 1 / -1; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.file .state { font-weight: 600; }
+.file .state.ok { color: var(--ok); }
+.file .state.err { color: var(--err); }
+.file .state.busy { color: var(--accent); }
+.target { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--muted); word-break: break-all; }
+.actions { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+.bar { flex: 1 1 160px; height: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
+.bar > div { height: 100%; width: 0%; background: var(--accent); transition: width 0.2s; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+    <h1>GitHub Uploader</h1>
+    <p class="sub">Upload files straight into a repository folder with a name you choose.</p>
+
+    <section class="card" id="tokenCard">
+        <h2>1. Connect</h2>
+        <div class="inline">
+            <div class="field">
+                <label for="token">Personal access token</label>
+                <input type="password" id="token" placeholder="ghp_... or github_pat_..." autocomplete="off" spellcheck="false">
+            </div>
+            <button id="connectBtn">Connect</button>
+        </div>
+        <label class="check"><input type="checkbox" id="remember"> Remember token in this browser</label>
+        <div class="hint">Classic tokens need the <b>repo</b> scope. Fine-grained tokens need <b>Contents: Read and write</b> on the target repo. The token is only sent to api.github.com.</div>
+        <div class="status" id="connectStatus"></div>
+    </section>
+
+    <section class="card hidden" id="targetCard">
+        <h2>2. Destination</h2>
+        <div class="field">
+            <label for="repoFilter">Repository</label>
+            <input type="text" id="repoFilter" placeholder="Filter repositories..." style="margin-bottom:8px">
+            <select id="repoSelect"></select>
+        </div>
+        <div class="row">
+            <div class="field">
+                <label for="branchSelect">Branch</label>
+                <select id="branchSelect" disabled></select>
+            </div>
+            <div class="field">
+                <label for="pathSelect">Folder path</label>
+                <select id="pathSelect" disabled></select>
+            </div>
+        </div>
+        <div class="field">
+            <label for="subfolder">New subfolder (optional)</label>
+            <input type="text" id="subfolder" placeholder="e.g. assets/models" spellcheck="false">
+            <div class="hint">Appended after the selected folder. Folders are created automatically.</div>
+        </div>
+        <div class="field">
+            <label for="commitMessage">Commit message</label>
+            <input type="text" id="commitMessage" value="Upload files" spellcheck="false">
+        </div>
+        <div class="status" id="targetStatus"></div>
+    </section>
+
+    <section class="card hidden" id="filesCard">
+        <h2>3. Files</h2>
+        <div class="dropzone" id="dropzone">
+            <div><strong>Click to choose files</strong> or drag them here</div>
+            <input type="file" id="fileInput" multiple class="hidden">
+        </div>
+        <div class="files" id="fileList"></div>
+        <div class="actions">
+            <button id="uploadBtn" disabled>Upload to GitHub</button>
+            <button id="clearBtn" class="secondary" disabled>Clear list</button>
+            <div class="bar hidden" id="progressBar"><div id="progressFill"></div></div>
+        </div>
+        <div class="status" id="uploadStatus"></div>
+    </section>
+</main>
+
+<script>
+const API = 'https://api.github.com';
+const STORAGE_KEY = 'ghUploaderToken';
+
+const tokenInput = document.getElementById('token');
+const rememberBox = document.getElementById('remember');
+const connectBtn = document.getElementById('connectBtn');
+const connectStatus = document.getElementById('connectStatus');
+const targetCard = document.getElementById('targetCard');
+const filesCard = document.getElementById('filesCard');
+const repoFilter = document.getElementById('repoFilter');
+const repoSelect = document.getElementById('repoSelect');
+const branchSelect = document.getElementById('branchSelect');
+const pathSelect = document.getElementById('pathSelect');
+const subfolderInput = document.getElementById('subfolder');
+const commitInput = document.getElementById('commitMessage');
+const targetStatus = document.getElementById('targetStatus');
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fileList = document.getElementById('fileList');
+const uploadBtn = document.getElementById('uploadBtn');
+const clearBtn = document.getElementById('clearBtn');
+const progressBar = document.getElementById('progressBar');
+const progressFill = document.getElementById('progressFill');
+const uploadStatus = document.getElementById('uploadStatus');
+
+let token = '';
+let repos = [];
+let entries = [];
+let uploading = false;
+let repoLoadId = 0;
+
+function setStatus(element, message, kind) {
+    element.textContent = message || '';
+    element.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function encodePath(path) {
+    return path.split('/').map(encodeURIComponent).join('/');
+}
+
+function cleanPath(path) {
+    return path.split('/').map(part => part.trim()).filter(Boolean).join('/');
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function gh(path, options = {}) {
+    const response = await fetch(path.startsWith('http') ? path : API + path, {
+        ...options,
+        headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + token,
+            'X-GitHub-Api-Version': '2022-11-28',
+            ...(options.headers || {})
+        }
+    });
+    return response;
+}
+
+async function ghJson(path, options) {
+    const response = await gh(path, options);
+    if (!response.ok) {
+        let message = response.status + ' ' + response.statusText;
+        try {
+            const body = await response.json();
+            if (body && body.message) message = body.message;
+        } catch (e) {}
+        const error = new Error(message);
+        error.status = response.status;
+        throw error;
+    }
+    return response.json();
+}
+
+function readStoredToken() {
+    try {
+        return localStorage.getItem(STORAGE_KEY) || '';
+    } catch (e) {
+        return '';
+    }
+}
+
+function storeToken(value) {
+    try {
+        if (value) {
+            localStorage.setItem(STORAGE_KEY, value);
+        } else {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+    } catch (e) {}
+}
+
+async function connect() {
+    const value = tokenInput.value.trim();
+    if (!value) {
+        setStatus(connectStatus, 'Enter a token first.', 'err');
+        return;
+    }
+    token = value;
+    connectBtn.disabled = true;
+    setStatus(connectStatus, 'Connecting...');
+    try {
+        const user = await ghJson('/user');
+        setStatus(connectStatus, 'Connected as ' + user.login + '. Loading repositories...', 'ok');
+        await loadRepos();
+        storeToken(rememberBox.checked ? token : '');
+        setStatus(connectStatus, 'Connected as ' + user.login + ' (' + repos.length + ' repositories).', 'ok');
+        targetCard.classList.remove('hidden');
+        filesCard.classList.remove('hidden');
+    } catch (error) {
+        token = '';
+        setStatus(connectStatus, 'Could not connect: ' + error.message, 'err');
+    } finally {
+        connectBtn.disabled = false;
+    }
+}
+
+async function loadRepos() {
+    repos = [];
+    let page = 1;
+    while (true) {
+        const batch = await ghJson('/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member&page=' + page);
+        repos = repos.concat(batch);
+        if (batch.length < 100) break;
+        page++;
+    }
+    renderRepos();
+}
+
+function renderRepos() {
+    const query = repoFilter.value.trim().toLowerCase();
+    const previous = repoSelect.value;
+    repoSelect.innerHTML = '';
+    const visible = repos.filter(repo => repo.full_name.toLowerCase().includes(query));
+    visible.forEach(repo => {
+        const option = document.createElement('option');
+        option.value = repo.full_name;
+        option.textContent = repo.full_name + (repo.private ? '  (private)' : '');
+        repoSelect.appendChild(option);
+    });
+    if (!visible.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No repositories match';
+        repoSelect.appendChild(option);
+        branchSelect.innerHTML = '';
+        pathSelect.innerHTML = '';
+        branchSelect.disabled = true;
+        pathSelect.disabled = true;
+        updateUploadState();
+        return;
+    }
+    if (visible.some(repo => repo.full_name === previous)) {
+        repoSelect.value = previous;
+    }
+    loadRepoDetails();
+}
+
+async function loadRepoDetails() {
+    const fullName = repoSelect.value;
+    const repo = repos.find(item => item.full_name === fullName);
+    if (!repo) return;
+    const loadId = ++repoLoadId;
+    branchSelect.disabled = true;
+    pathSelect.disabled = true;
+    setStatus(targetStatus, 'Loading branches...');
+    try {
+        let branches = [];
+        let page = 1;
+        while (true) {
+            const batch = await ghJson('/repos/' + fullName + '/branches?per_page=100&page=' + page);
+            branches = branches.concat(batch);
+            if (batch.length < 100) break;
+            page++;
+        }
+        if (loadId !== repoLoadId) return;
+        branchSelect.innerHTML = '';
+        branches.forEach(branch => {
+            const option = document.createElement('option');
+            option.value = branch.name;
+            option.textContent = branch.name;
+            branchSelect.appendChild(option);
+        });
+        if (branches.some(branch => branch.name === repo.default_branch)) {
+            branchSelect.value = repo.default_branch;
+        }
+        branchSelect.disabled = !branches.length;
+        await loadPaths();
+    } catch (error) {
+        if (loadId !== repoLoadId) return;
+        branchSelect.innerHTML = '';
+        pathSelect.innerHTML = '';
+        if (error.status === 409) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Empty repository (no branches)';
+            branchSelect.appendChild(option);
+            setStatus(targetStatus, 'This repository is empty. Create a first commit on GitHub, then reload.', 'warn');
+        } else {
+            setStatus(targetStatus, 'Could not load branches: ' + error.message, 'err');
+        }
+    }
+    updateUploadState();
+}
+
+async function loadPaths() {
+    const fullName = repoSelect.value;
+    const branch = branchSelect.value;
+    const loadId = repoLoadId;
+    pathSelect.disabled = true;
+    setStatus(targetStatus, 'Loading folders...');
+    try {
+        const tree = await ghJson('/repos/' + fullName + '/git/trees/' + encodeURIComponent(branch) + '?recursive=1');
+        if (loadId !== repoLoadId) return;
+        const folders = tree.tree.filter(item => item.type === 'tree').map(item => item.path).sort((a, b) => a.localeCompare(b));
+        pathSelect.innerHTML = '';
+        const root = document.createElement('option');
+        root.value = '';
+        root.textContent = '/ (repository root)';
+        pathSelect.appendChild(root);
+        folders.forEach(folder => {
+            const option = document.createElement('option');
+            option.value = folder;
+            option.textContent = '/' + folder;
+            pathSelect.appendChild(option);
+        });
+        pathSelect.disabled = false;
+        setStatus(targetStatus, tree.truncated ? 'Folder list was truncated by GitHub. Use the subfolder box for deeper paths.' : '', tree.truncated ? 'warn' : '');
+    } catch (error) {
+        if (loadId !== repoLoadId) return;
+        pathSelect.innerHTML = '';
+        const root = document.createElement('option');
+        root.value = '';
+        root.textContent = '/ (repository root)';
+        pathSelect.appendChild(root);
+        pathSelect.disabled = false;
+        setStatus(targetStatus, 'Could not list folders (' + error.message + '). Root is still available.', 'warn');
+    }
+    refreshTargets();
+    updateUploadState();
+}
+
+function baseFolder() {
+    return cleanPath([pathSelect.value, subfolderInput.value].filter(Boolean).join('/'));
+}
+
+function targetPathFor(entry) {
+    const name = entry.name.trim().replace(/^\/+/, '');
+    return cleanPath([baseFolder(), name].filter(Boolean).join('/'));
+}
+
+function addFiles(fileArray) {
+    Array.from(fileArray).forEach(file => {
+        entries.push({ id: Math.random().toString(36).slice(2), file, name: file.name, state: 'ready', message: '' });
+    });
+    renderFiles();
+}
+
+function renderFiles() {
+    fileList.innerHTML = '';
+    entries.forEach(entry => {
+        const row = document.createElement('div');
+        row.className = 'file';
+        row.dataset.id = entry.id;
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = entry.name;
+        nameInput.spellcheck = false;
+        nameInput.disabled = uploading;
+        nameInput.addEventListener('input', () => {
+            entry.name = nameInput.value;
+            row.querySelector('.target').textContent = displayTarget(entry);
+            updateUploadState();
+        });
+
+        const remove = document.createElement('button');
+        remove.className = 'icon';
+        remove.textContent = '✕';
+        remove.title = 'Remove';
+        remove.disabled = uploading;
+        remove.addEventListener('click', () => {
+            entries = entries.filter(item => item.id !== entry.id);
+            renderFiles();
+        });
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const target = document.createElement('span');
+        target.className = 'target';
+        target.textContent = displayTarget(entry);
+        const state = document.createElement('span');
+        state.className = 'state' + (entry.state === 'done' ? ' ok' : entry.state === 'error' ? ' err' : entry.state === 'busy' ? ' busy' : '');
+        state.textContent = entry.message || formatSize(entry.file.size);
+        meta.appendChild(target);
+        meta.appendChild(state);
+
+        row.appendChild(nameInput);
+        row.appendChild(remove);
+        row.appendChild(meta);
+        fileList.appendChild(row);
+    });
+    clearBtn.disabled = uploading || !entries.length;
+    updateUploadState();
+}
+
+function displayTarget(entry) {
+    const repo = repoSelect.value || '...';
+    const branch = branchSelect.value || '...';
+    return repo + '@' + branch + ' : /' + targetPathFor(entry);
+}
+
+function refreshTargets() {
+    fileList.querySelectorAll('.file').forEach(row => {
+        const entry = entries.find(item => item.id === row.dataset.id);
+        if (entry) row.querySelector('.target').textContent = displayTarget(entry);
+    });
+}
+
+function updateUploadState() {
+    const ready = entries.length > 0 &&
+        !uploading &&
+        repoSelect.value &&
+        branchSelect.value &&
+        entries.every(entry => entry.name.trim());
+    uploadBtn.disabled = !ready;
+}
+
+function readAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result;
+            resolve(result.slice(result.indexOf(',') + 1));
+        };
+        reader.onerror = () => reject(new Error('Could not read file'));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function getExistingSha(fullName, path, branch) {
+    const response = await gh('/repos/' + fullName + '/contents/' + encodePath(path) + '?ref=' + encodeURIComponent(branch));
+    if (response.status === 404) return null;
+    if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message || response.statusText);
+    }
+    const body = await response.json();
+    if (Array.isArray(body)) throw new Error('A folder with that name already exists');
+    return body.sha;
+}
+
+async function uploadEntry(entry, fullName, branch, message) {
+    const path = targetPathFor(entry);
+    if (!path) throw new Error('File name is empty');
+    const content = await readAsBase64(entry.file);
+    let sha = await getExistingSha(fullName, path, branch);
+    const payload = { message: message || 'Upload ' + path, content, branch };
+    if (sha) payload.sha = sha;
+    try {
+        await ghJson('/repos/' + fullName + '/contents/' + encodePath(path), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    } catch (error) {
+        if (error.status === 409 || error.status === 422) {
+            sha = await getExistingSha(fullName, path, branch);
+            const retry = { message: payload.message, content, branch };
+            if (sha) retry.sha = sha;
+            await ghJson('/repos/' + fullName + '/contents/' + encodePath(path), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(retry)
+            });
+        } else {
+            throw error;
+        }
+    }
+    return sha ? 'Updated' : 'Created';
+}
+
+async function startUpload() {
+    const fullName = repoSelect.value;
+    const branch = branchSelect.value;
+    const message = commitInput.value.trim();
+    const names = entries.map(targetPathFor);
+    if (new Set(names).size !== names.length) {
+        setStatus(uploadStatus, 'Two files would be written to the same path. Rename one of them.', 'err');
+        return;
+    }
+    uploading = true;
+    entries.forEach(entry => {
+        entry.state = 'ready';
+        entry.message = '';
+    });
+    renderFiles();
+    progressBar.classList.remove('hidden');
+    progressFill.style.width = '0%';
+    setStatus(uploadStatus, 'Uploading...');
+
+    let done = 0;
+    let failed = 0;
+    for (const entry of entries) {
+        entry.state = 'busy';
+        entry.message = 'Uploading...';
+        renderFiles();
+        try {
+            const result = await uploadEntry(entry, fullName, branch, message);
+            entry.state = 'done';
+            entry.message = result;
+        } catch (error) {
+            entry.state = 'error';
+            entry.message = error.message;
+            failed++;
+        }
+        done++;
+        progressFill.style.width = Math.round((done / entries.length) * 100) + '%';
+        renderFiles();
+    }
+
+    uploading = false;
+    renderFiles();
+    if (failed) {
+        setStatus(uploadStatus, (done - failed) + ' uploaded, ' + failed + ' failed.', 'err');
+    } else {
+        setStatus(uploadStatus, 'All ' + done + ' file(s) uploaded to ' + fullName + '.', 'ok');
+    }
+}
+
+connectBtn.addEventListener('click', connect);
+tokenInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter') connect();
+});
+rememberBox.addEventListener('change', () => {
+    if (!rememberBox.checked) storeToken('');
+});
+repoFilter.addEventListener('input', renderRepos);
+repoSelect.addEventListener('change', loadRepoDetails);
+branchSelect.addEventListener('change', async () => {
+    await loadPaths();
+});
+pathSelect.addEventListener('change', () => {
+    refreshTargets();
+});
+subfolderInput.addEventListener('input', refreshTargets);
+
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+    addFiles(fileInput.files);
+    fileInput.value = '';
+});
+['dragenter', 'dragover'].forEach(type => {
+    dropzone.addEventListener(type, event => {
+        event.preventDefault();
+        dropzone.classList.add('over');
+    });
+});
+['dragleave', 'drop'].forEach(type => {
+    dropzone.addEventListener(type, event => {
+        event.preventDefault();
+        dropzone.classList.remove('over');
+    });
+});
+dropzone.addEventListener('drop', event => {
+    if (event.dataTransfer && event.dataTransfer.files) addFiles(event.dataTransfer.files);
+});
+
+uploadBtn.addEventListener('click', startUpload);
+clearBtn.addEventListener('click', () => {
+    entries = [];
+    progressBar.classList.add('hidden');
+    setStatus(uploadStatus, '');
+    renderFiles();
+});
+
+const saved = readStoredToken();
+if (saved) {
+    tokenInput.value = saved;
+    rememberBox.checked = true;
+    connect();
+}
+</script>
+</body>
+</html>
