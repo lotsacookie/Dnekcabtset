@@ -1,0 +1,57 @@
+      "creator": {
+        "id": 435452412,
+        "type": "Group",
+        "name": "Lunars Interactive"
+      },
+      "creator_public_info": {
+        "id": 435452412,
+        "name": "Lunars Interactive",
+        "description": "",
+        "owner": {
+          "hasVerifiedBadge": false,
+          "userId": 11730787677,
+          "username": "vlctorsenflippklipp",
+          "displayName": "Pollo"
+        },
+        "shout": null,
+        "memberCount": 19,
+        "isBuildersClubOnly": false,
+        "publicEntryAllowed": true,
+        "hasVerifiedBadge": false,
+        "hasSocialModules": true,
+        "communityTier": {
+          "groupId": 435452412,
+          "currentTier": 2,
+          "previousTier": null,
+          "tierUpdatedTime": null,
+          "lastEvaluatedTime": "2026-10-24T15:17:05.638Z",
+          "requirements": [
+            {
+              "key": 1,
+              "satisfied": true
+            },
+            {
+              "key": 2,
+              "satisfied": true
+            },
+            {
+              "key": 3,
+              "satisfied": false
+            },
+            {
+              "key": 4,
+              "satisfied": true
+            },
+            {
+              "key": 5,
+              "satisfied": false
+            }
+          ],
+          "capabilities": {
+            "isEligibleForUnrestrictedMessages": false
+          }
+        }
+      }
+    }
+  ]
+}
